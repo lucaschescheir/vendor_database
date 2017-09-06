@@ -63,27 +63,37 @@ server.post('/api/customer/items/:itemId/purchases', function(req, res) {
   const id = parseInt(req.params.itemId);
 
   Item.find({
-    where: {
-      id: id,
-    },
-  })
-  .then(function(item){
-      item.update({
-        quantity: item.quantity -1,
-      }, {
-        where: {
-          id: id
-        },
-      });
-      Purchase.create({
-          ItemId: parseInt(item.id),
-          cost: item.cost,
-        });
+      where: {
+        id: id,
+      },
     })
-    .then(function() {
-      res.redirect('/api/customer/items')
+    .then(function(item) {
+      req.body.money = parseInt(req.body.money);
+      console.log(item)
+      console.log(req.body)
+      if(req.body.money >= item.cost && item.quantity !== 0) {
+
+        item.update({
+          quantity: item.quantity - 1,
+        }, {
+          where: {
+            id: id
+          },
+        });
+        Purchase.create({
+            ItemId: parseInt(item.id),
+            cost: item.cost,
+          })
+          .then(function() {
+            res.redirect('/api/customer/items')
+          })
+      } else if(req.body.money >= item.cost && item.quantity === 0) {
+        res.send('Item sold out!!!')
+      } else {
+        res.send('please deposit more money')
+      }
     });
-  });
+})
 
 //update item data
 server.put('/api/vendor/items/:itemId', function(req, res) {
@@ -104,26 +114,25 @@ server.put('/api/vendor/items/:itemId', function(req, res) {
 });
 
 //vendor what and when An item was purchsed
-server.get('/api/vendor/purchases', function(req, res){
+server.get('/api/vendor/purchases', function(req, res) {
   Purchase.findAll()
-  .then(function(purchase){
-    res.send(purchase)
-  })
-})
+    .then(function(purchase) {
+      res.send(purchase)
+    });
+});
 
 //total amount of money machine has taken
-// server.get('/api/vendor/money', function(req, res){
-//   Purchase.sum({
-//     where: {
-//       cost: 230,
-//     }
-//   })
-//   .then(function(count){
-//     console.log(count)
-//   })
+server.get('/api/vendor/money', function(req, res) {
+  Purchase.findAll()
+    .then(function(purchase) {
+      let totalPurchased = 0;
+      for(let i = 0; i < purchase.length; i++) {
+        totalPurchased += purchase[i].cost
+      }
+      res.json(totalPurchased)
+    });
+});
 
-
-//})
 server.listen('3000');
 
 console.log('connected to port 3000')
